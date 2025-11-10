@@ -1,0 +1,145 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Business Dashboard Pro</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background-color: #0f172a; color: white; font-family: 'Inter', sans-serif; }
+    #loginScreen { display: flex; justify-content: center; align-items: center; height: 100vh; }
+    #dashboard { display: none; height: 100vh; }
+    .sidebar { background-color: #1e293b; width: 240px; }
+    .content { flex: 1; background-color: #f1f5f9; color: #0f172a; overflow-y: auto; }
+    #profileMenu { opacity: 0; transform: translateY(-4px); transition: opacity 0.18s ease, transform 0.18s ease; pointer-events: none; }
+    #profileMenu.open { opacity: 1; transform: translateY(0); pointer-events: auto; box-shadow: 0 6px 20px rgba(0,0,0,0.12); }
+    #profileMenu::before { content: ''; position: absolute; top: -6px; right: 20px; border-width: 6px; border-style: solid; border-color: transparent transparent white transparent; }
+    #profileMenu.flip-up::before { top: auto; bottom: -12px; border-color: white transparent transparent transparent; }
+    #dropdownOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.25); backdrop-filter: blur(2px); opacity: 0; transition: opacity 0.2s ease; pointer-events: none; z-index: 40; }
+    #dropdownOverlay.active { opacity: 1; pointer-events: all; }
+  </style>
+</head>
+<body>
+
+<div id="dropdownOverlay"></div>
+
+<!-- Login Screen -->
+<div id="loginScreen" class="bg-slate-900">
+  <div class="bg-slate-800 p-6 rounded-2xl shadow-xl w-80 text-center">
+    <h1 class="text-xl font-bold mb-4 text-white">Login</h1>
+    <input id="username" placeholder="Username" class="w-full p-2 mb-3 rounded bg-slate-700 text-white focus:outline-none">
+    <input id="password" type="password" placeholder="Password" class="w-full p-2 mb-4 rounded bg-slate-700 text-white focus:outline-none">
+    <button id="loginBtn" class="w-full bg-blue-600 hover:bg-blue-700 p-2 rounded text-white">Login</button>
+    <p id="loginError" class="text-red-400 mt-3 hidden">Invalid credentials</p>
+  </div>
+</div>
+
+<!-- Dashboard -->
+<div id="dashboard" class="flex h-screen">
+  <div class="sidebar p-4 space-y-4 text-white">
+    <h2 class="text-lg font-semibold">Dashboard</h2>
+    <button onclick="setActivePage('home')" class="block w-full text-left hover:text-blue-400">🏠 Home</button>
+    <button onclick="logout()" class="block w-full text-left hover:text-red-400">🚪 Logout</button>
+  </div>
+  <div class="content flex flex-col">
+    <div class="flex justify-end items-center p-4 bg-white shadow relative">
+      <div class="relative">
+        <button id="profileBtn" class="flex items-center space-x-2 focus:outline-none">
+          <img src="https://i.pravatar.cc/40" class="w-8 h-8 rounded-full">
+          <span class="text-slate-800 text-sm">admin</span>
+        </button>
+        <div id="profileMenu" class="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg">
+          <a href="#" onclick="setActivePage('profile')" class="flex items-center px-4 py-2 hover:bg-gray-100">👤 Profile</a>
+          <a href="#" onclick="setActivePage('settings')" class="flex items-center px-4 py-2 hover:bg-gray-100">⚙️ Settings</a>
+          <hr class="my-1">
+          <button onclick="logout()" class="w-full text-left text-red-600 px-4 py-2 hover:bg-gray-100">Logout</button>
+        </div>
+      </div>
+    </div>
+    <div id="pageContent" class="p-6">Welcome to the Home Page!</div>
+  </div>
+</div>
+
+<script>
+// --- Ensure default admin exists ---
+(function seedAdmin(){
+  let users = JSON.parse(localStorage.getItem('users')) || [];
+  if (!users.find(u => u.username === 'admin')) {
+    users.push({ username: 'admin', password: 'admin123', role: 'admin' });
+    localStorage.setItem('users', JSON.stringify(users));
+  }
+})();
+
+// --- Login Logic ---
+const loginBtn = document.getElementById('loginBtn');
+const loginError = document.getElementById('loginError');
+
+loginBtn.addEventListener('click', () => {
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value.trim();
+  const users = JSON.parse(localStorage.getItem('users')) || [];
+  const found = users.find(u => u.username === username && u.password === password);
+  if(found){
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'flex';
+    localStorage.setItem('loggedInUser', JSON.stringify(found));
+  } else {
+    loginError.classList.remove('hidden');
+  }
+});
+
+// --- Logout ---
+function logout(){
+  localStorage.removeItem('loggedInUser');
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+}
+
+// --- Keep login session ---
+window.addEventListener('load', () => {
+  const user = JSON.parse(localStorage.getItem('loggedInUser'));
+  if(user){
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'flex';
+  }
+});
+
+// --- Dropdown with overlay and flip ---
+const profileBtn = document.getElementById('profileBtn');
+const profileMenu = document.getElementById('profileMenu');
+const dropdownOverlay = document.getElementById('dropdownOverlay');
+
+profileBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const rect = profileMenu.getBoundingClientRect();
+  if (window.innerHeight - rect.bottom < 180) {
+    profileMenu.classList.add('flip-up');
+    profileMenu.style.top = 'auto';
+    profileMenu.style.bottom = '60px';
+  } else {
+    profileMenu.classList.remove('flip-up');
+    profileMenu.style.top = '60px';
+    profileMenu.style.bottom = 'auto';
+  }
+  profileMenu.classList.toggle('open');
+  dropdownOverlay.classList.toggle('active', profileMenu.classList.contains('open'));
+});
+
+document.addEventListener('click', (e) => {
+  if (!profileMenu.contains(e.target) && !profileBtn.contains(e.target)) {
+    profileMenu.classList.remove('open');
+    dropdownOverlay.classList.remove('active');
+  }
+});
+
+// --- Page switcher ---
+function setActivePage(page){
+  const content = document.getElementById('pageContent');
+  if(page === 'home') content.innerHTML = '<h2 class="text-2xl font-bold mb-4">🏠 Home</h2><p>Welcome back!</p>';
+  if(page === 'profile') content.innerHTML = '<h2 class="text-2xl font-bold mb-4">👤 Profile</h2><p>Here is your profile.</p>';
+  if(page === 'settings') content.innerHTML = '<h2 class="text-2xl font-bold mb-4">⚙️ Settings</h2><p>Manage your preferences.</p>';
+}
+</script>
+</body>
+</html>
